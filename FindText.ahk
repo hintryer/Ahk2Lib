@@ -1,26 +1,26 @@
 ﻿;/*
 ;===========================================
-;  FindText - Capture screen image into text and then find it
+;  FindText - 屏幕抓字生成字库工具与找字函数
 ;  https://www.autohotkey.com/boards/viewtopic.php?f=83&t=116471
 ;
-;  Author  : FeiYue
-;  Version : 10.2
-;  Date    : 2026-02-22
+;  脚本作者 : FeiYue
+;  最新版本 : 10.2
+;  更新时间 : 2026-02-22
 ;
-;  Usage:  (required AHK v2.0.2+)
-;  1. Capture the image to text string.
-;  2. Test find the text string on full Screen.
-;  3. When test is successful, you may copy the code
-;     and paste it into your own script.
-;     Note: Copy the "FindText()" function and the following
-;     functions and paste it into your own script Just once.
-;  4. The more recommended way is to save the script as
-;     "FindText.ahk" and copy it to the "Lib" subdirectory
-;     of AHK program, instead of copying the "FindText()"
-;     function and the following functions, add a line to
-;     the beginning of your script: #Include <FindText>
-;  5. If you want to call a method in the "FindTextClass" class,
-;     use the parameterless FindText() to get the default object
+;  用法:  (需要最新版本 AHK v2.0.2+)
+;  1. 将本脚本保存为“FindText.ahk”并复制到AHK执行程序的Lib子目录中（手动建立目录）
+;  2. 抓图并生成调用FindText()的代码
+;     2.1 方式一：直接点击“抓图”按钮
+;     2.2 方式二：先设定截屏热键，使用热键截屏，再点击“截屏抓图”按钮
+;  3. 测试一下调用的代码是否成功:直接点击“测试”按钮
+;  4. 复制调用的代码到自己的脚本中
+;     4.1 方式一：打勾“附加FindText()函数”的选框，然后点击“复制”按钮（不推荐）
+;     4.2 方式二：取消“附加FindText()函数”的选框，然后点击“复制”按钮，
+;         然后粘贴到自己的脚本中，然后在自己的脚本开头加上一行:
+;         #Include <FindText>  ; Lib目录中必须有FindText.ahk
+;  5. 多色查找模式可以一定程度上适应图像的放大缩小，常用于游戏中找图
+;  6. 这个库还可以用于快速截屏、获取颜色、写入颜色、编辑后另存图片
+;  7. 如果要调用FindTextClass类中的函数，请用无参数的FindText()获取类实例对象
 ;
 ;===========================================
 ;*/
@@ -68,75 +68,68 @@ help()
 return "
 (
 ;--------------------------------
-;  FindText - Capture screen image into text and then find it
-;  Version : 10.2  (2026-02-22)
+;  FindText - 屏幕找字函数
+;  版本 : 10.2  (2026-02-22)
 ;--------------------------------
-;  returnArray:=FindText(
-;      &OutputX --> The name of the variable used to store the returned X coordinate
-;    , &OutputY --> The name of the variable used to store the returned Y coordinate
-;    , X1 --> the search scope's upper left corner X coordinates
-;    , Y1 --> the search scope's upper left corner Y coordinates
-;    , X2 --> the search scope's lower right corner X coordinates
-;    , Y2 --> the search scope's lower right corner Y coordinates
-;    , err1 --> Fault tolerance percentage of text       (0.1=10%)
-;    , err0 --> Fault tolerance percentage of background (0.1=10%)
-;      Setting err1<0 or err0<0 can enable the left and right dilation algorithm
-;      to ignore slight misalignment of text lines, the fault tolerance must be very small
-;      In FindPic mode, err0 can set the number of rows and columns to be skipped
-;    , Text --> can be a lot of text parsed into images, separated by '|'
-;    , ScreenShot --> if the value is 0, the last screenshot will be used
-;    , FindAll --> if the value is 0, Just find one result and return
-;    , JoinText --> if you want to combine find, it can be 1, or an array of words to find
-;    , offsetX --> Set the max text offset (X) for combination lookup
-;    , offsetY --> Set the max text offset (Y) for combination lookup
-;    , dir --> Nine directions for searching: up, down, left, right and center
-;      Default dir=0, the returned result will be sorted by the smallest error,
-;      Even if set a large fault tolerance, the first result still has the smallest error
-;    , zoomW --> Zoom percentage of image width  (1.0=100%)
-;    , zoomH --> Zoom percentage of image height (1.0=100%)
+;  返回变量:=FindText(
+;      OutputX --> 保存返回的X坐标的变量名称
+;    , OutputY --> 保存返回的Y坐标的变量名称
+;    , X1 --> 查找范围的左上角X坐标
+;    , Y1 --> 查找范围的左上角Y坐标
+;    , X2 --> 查找范围的右下角X坐标
+;    , Y2 --> 查找范围的右下角Y坐标
+;    , err1 --> 文字的黑点容错百分率（0.1=10%）
+;    , err0 --> 背景的白点容错百分率（0.1=10%）
+;      设置 err1<0 或 err0<0 可以打开左右膨胀算法
+;      忽略文字线条的轻微错位，此时容错值应该非常小
+;      在找图模式中，err0 可以设置要跳过的行列数，加快速度
+;    , Text --> 由工具生成的查找图像的数据，可以一次查找多个，用“|”分隔
+;    , ScreenShot --> 是否截屏，为0则使用上一次的截屏数据
+;    , FindAll --> 是否搜索所有位置，为0则找到一个位置就返回
+;    , JoinText --> 如果想组合查找，可以为1，或者是要查找单词的数组
+;    , offsetX --> 组合图像的每个字和前一个字的最大横向间隔
+;    , offsetY --> 组合图像的每个字和前一个字的最大高低间隔
+;    , dir --> 查找的方向，有上、下、左、右、中心9种
+;      默认 dir=0，这种返回的结果将按最小误差排序，
+;      即使设置了较大的容错，第一个结果也是误差最小的
+;    , zoomW --> 图像宽度的缩放百分率（1.0=100%）
+;    , zoomH --> 图像高度的缩放百分率（1.0=100%）
 ;  )
 ;
-;  The function returns an Array containing all lookup results,
-;  any result is a object with the following values:
-;  {1:X, 2:Y, 3:W, 4:H, x:X+W//2, y:Y+H//2, id:Comment}
-;  If no image is found, the function returns 0.
-;  All coordinates are relative to Screen, colors are in RGB format
-;  All 'RRGGBB' can use 'Black', 'White', 'Red', 'Green', 'Blue', 'Yellow'
-;  All 'DRDGDB' can use similarity '1.0'(100%), it's floating-point number
+;  返回变量 --> 如果没找到结果会返回0。否则返回一个二级数组，
+;      第一级是每个结果对象，第二级是结果对象的具体信息对象:
+;      { 1:左上角X, 2:左上角Y, 3:图像宽度W, 4:图像高度H
+;        , x:中心点X, y:中心点Y, id:图像识别文本 }
+;  所有坐标都是相对于屏幕，颜色使用RGB格式
+;  所有 RRGGBB 可以使用 Black、White、Red、Green、Blue 代替，
+;  所有 DRDGDB 可以使用相似度 1.0（100%） 代替，它是浮点数
 ;
-;  If the return variable is set to 'ok', ok[1] is the first result found.
-;  ok[1].1, ok[1].2 is the X, Y coordinate of the upper left corner of the found image,
-;  ok[1].3, ok[1].4 is the width, height of the found image,
-;  ok[1].x <==> ok[1].1+ok[1].3//2 ( is the Center X coordinate of the found image ),
-;  ok[1].y <==> ok[1].2+ok[1].4//2 ( is the Center Y coordinate of the found image ),
-;  ok[1].id is the comment text, which is included in the <> of its parameter.
+;  如果 OutputX 等于 'wait' 或 'wait1' 意味着等待图像出现，
+;  如果 OutputX 等于 'wait0' 意味着等待图像消失
+;  此时 OutputY 设置等待时间的秒数，如果小于0则无限等待
+;  OutputY 也可以添加找到后的稳定时间：'等待时间,稳定时间'
+;  如果超时则返回0，意味着失败，如果等待图像出现成功，则返回位置数组
+;  如果等待图像消失成功，则返回 1
+;  例1: FindText(X:='wait', Y:=3, 0,0,0,0,0,0,Text)   ; 等待3秒等图像出现
+;  例2: FindText(X:='wait0', Y:=-1, 0,0,0,0,0,0,Text) ; 无限等待等图像消失
 ;
-;  If OutputX is equal to 'wait' or 'wait1'(appear), or 'wait0'(disappear)
-;  it means using a loop to wait for the image to appear or disappear.
-;  the OutputY is the wait time in seconds, time less than 0 means infinite waiting
-;  OutputY can also add a stable time after finding: 'wait time, stable time'
-;  Timeout means failure, return 0, and return other values means success
-;  If you want to appear and the image is found, return the found array object
-;  If you want to disappear and the image cannot be found, return 1
-;  Example 1: FindText(&X:='wait', &Y:=3, 0,0,0,0,0,0,Text)   ; Wait 3 seconds for appear
-;  Example 2: FindText(&X:='wait0', &Y:=-1, 0,0,0,0,0,0,Text) ; Wait indefinitely for disappear
-;
-;  <FindMultiColor> or <FindColor> : FindColor is FindMultiColor with only one point
+;  <FindMultiColor> 或 <FindColor> : 找色 是仅有一个点的 多点找色
 ;  Text:='|<>##DRDGDB $ 0/0/RRGGBB1-DRDGDB1/RRGGBB2, xn/yn/-RRGGBB3/RRGGBB4, ...'
-;  Color behind '##' (0xDRDGDB) is the default allowed variation for all colors
-;  Initial point (0,0) match 0xRRGGBB1(+/-0xDRDGDB1) or 0xRRGGBB2(+/-0xDRDGDB),
-;  point (xn,yn) match not 0xRRGGBB3(+/-0xDRDGDB) and not 0xRRGGBB4(+/-0xDRDGDB)
-;  A color group starting with '-' means all colors are excluded
-;  Each point can take up to 10 sets of colors (xn/yn/RRGGBB1/.../RRGGBB10)
+;  '##'之后的颜色 (0xDRDGDB) 是所有颜色的默认偏色（各个分量允许的变化值）
+;  初始点 (0,0) 匹配 0xRRGGBB1(+/-0xDRDGDB1) 或者 0xRRGGBB2(+/-0xDRDGDB)，
+;  点 (xn,yn) 匹配 排除 0xRRGGBB3(+/-0xDRDGDB) 和排除 0xRRGGBB4(+/-0xDRDGDB)
+;  颜色组以 '-' 开头表示要排除所有颜色，其他颜色都匹配
+;  每个点最多允许匹配10组颜色 (xn/yn/RRGGBB1/.../RRGGBB10)
 ;
-;  <FindShape> : Similar to FindMultiColor, just replacing the color with
-;  whether the point is similar in color to the first point
+;  <FindShape> : 类似于 FindMultiColor，仅是把具体颜色替换为
+;  这一点的颜色是否与第一点的颜色是否相似
 ;  Text:='|<>##DRDGDB $ 0/0/1, x1/y1/0, x2/y2/1, xn/yn/0, ...'
 ;
-;  <FindPic> : Text parameter require manual input, Pic can use 'HBITMAP:*' handle
+;  <FindPic> : Text 参数需要手动输入，图片可以使用 'HBITMAP:*' 句柄
 ;  Text:='|<>##DRDGDB/RRGGBB1-DRDGDB1/RRGGBB2... $ d:\a.bmp'
-;  Color behind '##' (0xDRDGDB) is the default allowed variation for all colors
-;  the 0xRRGGBB1(+/-0xDRDGDB1) and 0xRRGGBB2(+/-0xDRDGDB) both transparent colors
+;  '##'之后的颜色 (0xDRDGDB) 是所有颜色的默认偏色（各个分量允许的变化值）
+;  这个 0xRRGGBB1(+/-0xDRDGDB1) 和 0xRRGGBB2(+/-0xDRDGDB)... 都是透明色
+;
 ;
 ;--------------------------------
 )"
@@ -3543,105 +3536,105 @@ Lang(text:="", getLang:=0)
   {
     s:="
     (
-Myww       = Width = Adjust the width of the capture range
-Myhh       = Height = Adjust the height of the capture range
-AddFunc    = Add = Additional FindText() in Copy
-NowHotkey  = Hotkey = Current screenshot hotkey
-SetHotkey1 = = First sequence Screenshot hotkey
-SetHotkey2 = = Second sequence Screenshot hotkey
-Apply      = Apply = Apply new screenshot hotkey
-CutU2      = CutU = Cut the Upper Edge of the text in the edit box below
-CutL2      = CutL = Cut the Left Edge of the text in the edit box below
-CutR2      = CutR = Cut the Right Edge of the text in the edit box below
-CutD2      = CutD = Cut the Lower Edge of the text in the edit box below
-Update     = Update = Update the text in the edit box below to the line of Code
-GetRange   = GetRange = Get screen range to Clipboard and update the search range of the Code
-GetOffset  = GetOffset = Get position offset relative to the Text from the Code and update FindText().Click()
-GetClipOffset  = GetOffset2 = Get position offset relative to the Text from the Left Box
-Capture    = Capture = Initiate Image Capture Sequence
-CaptureS   = CaptureS = Restore the Saved ScreenShot by Hotkey and then start capturing
-Test       = Test = Test the Text from the Code to see if it can be found on the screen
-TestClip   = Test2 = Test the Text from the Left Box and copy the result to Clipboard
-Paste      = Paste = Paste the Text from Clipboard to the Left Box
-CopyOffset = Copy2 = Copy the Offset to Clipboard
-Copy       = Copy = Copy the selected or all of the code to the clipboard
-Reset      = Reset = Reset to Original Captured Image
-SplitAdd   = SplitAdd = Using Markup Segmentation to Generate Text Library
-AllAdd     = AllAdd = Append Another FindText Search Text into Previously Generated Code
-Gray2Two      = Gray2Two = Converts Image Pixels from Gray Threshold to Black or White
-GrayDiff2Two  = GrayDiff2Two = Converts Image Pixels from Gray Difference to Black or White
-Color2Two     = Color2Two = Converts Image Pixels from Color List to Black or White
-ColorPos2Two  = ColorPos2Two = Converts Image Pixels from Color Position to Black or White
-SelGray    = Gray = Gray value of the selected color
-SelColor   = Color = The selected color
-SelR       = R = Red component of the selected color
-SelG       = G = Green component of the selected color
-SelB       = B = Blue component of the selected color
-RepU       = -U = Undo Cut the Upper Edge by 1
-CutU       = U = Cut the Upper Edge by 1
-CutU3      = U3 = Cut the Upper Edge by 3
-RepL       = -L = Undo Cut the Left Edge by 1
-CutL       = L = Cut the Left Edge by 1
-CutL3      = L3 = Cut the Left Edge by 3
-Auto       = Auto = Automatic Cut Edge after image has been converted to black and white
-RepR       = -R = Undo Cut the Right Edge by 1
-CutR       = R = Cut the Right Edge by 1
-CutR3      = R3 = Cut the Right Edge by 3
-RepD       = -D = Undo Cut the Lower Edge by 1
-CutD       = D = Cut the Lower Edge by 1
-CutD3      = D3 = Cut the Lower Edge by 3
-Modify     = Modify = Allows Modify the Black and White Image
-MultiColor = FindMultiColor = Click multiple colors with the mouse, then Click OK button
-FindShape  = FindShape = Click multiple colors, it will be binarized based on the first color
-Undo       = Undo = Undo the last selected color
-Undo2      = Undo = Undo the last added color in Color List
-Comment    = Comment = Optional Comment used to Label Code ( Within <> )
-Threshold  = Gray Threshold = Gray Threshold which Determines Black or White Pixel Conversion (0-255)
-GrayDiff   = Gray Difference = Gray Difference which Determines Black or White Pixel Conversion (0-255)
-Similar1   = Similarity = Adjust color similarity as Equivalent to The Selected Color
-Similar2   = Similarity = Adjust color similarity as Equivalent to The Selected Color
-Similar3   = Similarity = Adjust color similarity as Equivalent to The Selected Color
-AddColorSim  = Add = Add Color to Color List and Run Color2Two
-AddColorDiff = Add = Add Color to Color List and Run Color2Two
-ColorList  = = Color list for converting black and white images
-DiffRGB    = R/G/B = Determine the allowed R/G/B Error (0-255) when Find MultiColor
-DiffRGB2   = R/G/B = Determine the allowed R/G/B Error (0-255)
-Bind0      = BindWin1 = Bind the window and Use GetDCEx() to get the image of background window
-Bind1      = BindWin1+ = Bind the window Use GetDCEx() and Modify the window to support transparency
-Bind2      = BindWin2 = Bind the window and Use PrintWindow() to get the image of background window
-Bind3      = BindWin2+ = Bind the window Use PrintWindow() and Modify the window to support transparency
-Bind4      = BindWin3 = Bind the window and Use PrintWindow(,,3) to get the image of background window
-OK         = OK = Create New FindText Code for Testing
-OK2        = OK = Restore this ScreenShot then Capturing
-Cancel     = Cancel = Close the Window Don't Do Anything
-Cancel2    = Cancel = Close the Window Don't Do Anything
-ClearAll   = ClearAll = Clean up all saved ScreenShots
-OpenDir    = OpenDir = Open the saved screenshots directory
-SavePic    = SavePic = Select a range and save as a picture
-SavePic2   = SavePic = Save the trimmed original image as a picture
-LoadPic    = LoadPic = Load a picture as Capture image
-ClipText   = = Displays the Text data from clipboard
-Offset     = = Displays the results of GetOffset2 or GetRange
-SelectBox  = = Select a screenshot to display in the upper left corner of the screen
-s1  = FindText
-s2  = Gray|GrayDiff|Color|ColorPos|MultiColor
-s3  = Capture Image To Text
-s4  = Capture Image To Text and Find Text Tool
-s5  = Direction keys to fine tune\nFirst click RButton(or Ctrl)\nMove the mouse away\nSecond click RButton(or Ctrl)
-s6  = Unbind Window using
-s7  = Drag a range with LButton(or Ctrl)\nCoordinates are copied to clipboard
-s8  = Found|Time|ms|Pos|Result|value can be get from|Wait 3 seconds for appear|Wait indefinitely for disappear
-s9  = Success
-s10 = The Capture Position|Perspective binding window\nRight click to finish capture
-s11 = Please Set Gray Difference First !
-s12 = Please select the core color first !
-s13 = Please convert the image to black or white first !
-s14 = Can't be used in ColorPos mode, because it can cause position errors
-s15 = Are you sure about the scope of your choice ?\n\nIf not, you can choose again
-s16 = Please add colors to the color list first !
-s17 = The picture you want to open was not found !
-s18 = Capture|ScreenShot
-s19 = Are you sure to delete all screenshots ?
+Myww       = 宽度 = 调整抓图范围的宽度
+Myhh       = 高度 = 调整抓图范围的高度
+AddFunc    = 附加 = 复制时带 FindText() 函数
+NowHotkey  = 截屏热键 = 当前的截屏热键
+SetHotkey1 = = 第一优先级的截屏热键
+SetHotkey2 = = 第二优先级的截屏热键
+Apply      = 应用 = 应用新的截屏热键
+CutU2      = 上删 = 裁剪下面编辑框中文字的上边缘
+CutL2      = 左删 = 裁剪下面编辑框中文字的左边缘
+CutR2      = 右删 = 裁剪下面编辑框中文字的右边缘
+CutD2      = 下删 = 裁剪下面编辑框中文字的下边缘
+Update     = 更新 = 更新下面编辑框中文字到代码行中
+GetRange   = 获取屏幕范围 = 获取屏幕范围到剪贴板并替换代码中的范围参数
+GetOffset  = 获取相对坐标 = 获取相对图像位置的偏移坐标并替换代码中的点击坐标
+GetClipOffset  = 获取相对坐标2 = 获取相对左边编辑框的图像的偏移坐标
+Capture    = 抓图 = 开始屏幕抓图
+CaptureS   = 截屏抓图 = 先截屏，然后显示截屏图像，再手动选择图像内的范围抓图
+Test       = 测试 = 测试生成的代码是否可以查找成功
+TestClip   = 测试2 = 测试左边文本框中的文字是否可以查找成功，结果复制到剪贴板
+Paste      = 粘贴 = 粘贴剪贴板的文字数据
+CopyOffset = 复制2 = 复制左边的偏移坐标到剪贴板
+Copy       = 复制 = 复制代码到剪贴板
+Reset      = 重读 = 重新读取原来的彩色图像
+SplitAdd   = 分割添加 = 点击黄色的标签来分割图像为多个图像数据，添加到旧代码中
+AllAdd     = 整体添加 = 将文字数据整体添加到旧代码中
+Gray2Two      = 灰度阈值二值化 = 灰度小于阈值的为黑色其余白色
+GrayDiff2Two  = 灰度差值二值化 = 某点与周围灰度之差大于差值的为黑色其余白色
+Color2Two     = 颜色二值化 = 通过颜色列表来转换图像为黑白图
+ColorPos2Two  = 颜色位置二值化 = 指定颜色及相似色为黑色其余白色，但是记录该色的位置
+SelGray    = 灰度 = 选定颜色的灰度值 (0-255)
+SelColor   = 颜色 = 选定颜色的RGB颜色值
+SelR       = 红 = 选定颜色的红色分量
+SelG       = 绿 = 选定颜色的绿色分量
+SelB       = 蓝 = 选定颜色的蓝色分量
+RepU       = -上 = 撤销裁剪上边缘1个像素
+CutU       = 上 = 裁剪上边缘1个像素
+CutU3      = 上3 = 裁剪上边缘3个像素
+RepL       = -左 = 撤销裁剪左边缘1个像素
+CutL       = 左 = 裁剪左边缘1个像素
+CutL3      = 左3 = 裁剪左边缘3个像素
+Auto       = 自动 = 二值化之后自动裁剪空白边缘
+RepR       = -右 = 撤销裁剪右边缘1个像素
+CutR       = 右 = 裁剪右边缘1个像素
+CutR3      = 右3 = 裁剪右边缘3个像素
+RepD       = -下 = 撤销裁剪下边缘1个像素
+CutD       = 下 = 裁剪下边缘1个像素
+CutD3      = 下3 = 裁剪下边缘3个像素
+Modify     = 修改 = 二值化后可以用鼠标在预览区点击手动修改黑白点
+MultiColor = 多点找色 = 鼠标选择多种颜色，之后点击“确定”按钮
+FindShape  = 找形状 = 鼠标选择多种颜色，会基于第一点的颜色二值化
+Undo       = 撤销 = 撤销上一次选择的颜色
+Undo2      = 撤销 = 撤销上一次添加到颜色列表的颜色
+Comment    = 识别文字 = 识别文本 (包含在<>中)，分割添加时也会分解成单个文字
+Threshold  = 灰度阈值 = 灰度阈值 (0-255)
+GrayDiff   = 灰度差值 = 灰度差值 (0-255)
+Similar1   = 相似度 = 与选定颜色的相似度
+Similar2   = 相似度 = 与选定颜色的相似度
+Similar3   = 相似度 = 与选定颜色的相似度
+AddColorSim  = 添加 = 颜色相似模式添加到颜色列表中再运行颜色二值化
+AddColorDiff = 添加 = 颜色偏色模式添加到颜色列表中再运行颜色二值化
+ColorList  = = 颜色列表用于转换图像为二值图
+DiffRGB    = 红/绿/蓝 = 多色查找时各分量允许的偏差 (0-255)
+DiffRGB2   = 红/绿/蓝 = 多色查找时各分量允许的偏差 (0-255)
+Bind0      = 绑定窗口1 = 绑定窗口使用GetDCEx()获取后台窗口图像
+Bind1      = 绑定窗口1+ = 绑定窗口使用GetDCEx()并修改窗口透明度
+Bind2      = 绑定窗口2 = 绑定窗口使用PrintWindow()获取后台窗口图像
+Bind3      = 绑定窗口2+ = 绑定窗口使用PrintWindow()并修改窗口透明度
+Bind4      = 绑定窗口3 = 绑定窗口使用PrintWindow(,,3)获取后台窗口图像
+OK         = 确定 = 生成全新的代码替换旧代码
+OK2        = 确定 = 恢复截屏到屏幕然后再抓图
+Cancel     = 取消 = 关闭窗口不做任何事
+Cancel2    = 取消 = 关闭窗口不做任何事
+ClearAll   = 清空 = 清空所有保存的截图
+OpenDir    = 打开目录 = 打开保存屏幕截图的目录
+SavePic    = 保存图片 = 选择一个范围保存为图片
+SavePic2   = 保存图片 = 将修剪后的原始图像保存为图片
+LoadPic    = 载入图片 = 载入一张图片作为抓取的图像
+ClipText   = = 显示粘贴的文字数据
+Offset     = = 显示“获取相对坐标2”或者“获取屏幕范围”的结果
+SelectBox  = = 选择截图显示到屏幕左上角
+s1  = FindText找字工具
+s2  = 灰度阈值|灰度差值|颜色|颜色位置|多色查找
+s3  = 图像二值化及分割
+s4  = 抓图生成字库及找字代码
+s5  = 方向键微调选框\n先点击右键(Ctrl)一次\n把鼠标移开\n再点击右键(Ctrl)一次
+s6  = 解绑窗口使用
+s7  = 左键(Ctrl)拖动选择范围\n坐标复制到剪贴板
+s8  = 找到|时间|毫秒|位置|结果|值可以这样获取|等待3秒等图像出现|无限等待等图像消失
+s9  = 截屏成功
+s10 = 鼠标位置|穿透显示绑定窗口\n点击右键完成抓图
+s11 = 请先设定灰度差值！
+s12 = 请先选择核心颜色！
+s13 = 请先将图像二值化！
+s14 = 不能用于颜色位置二值化模式, 因为分割后会导致位置错误
+s15 = 你确定选择的范围吗？\n\n如果不确定，可以重新选择
+s16 = 请先添加颜色到颜色列表！
+s17 = 你想打开的图片没有找到！
+s18 = 捕获|截图
+s19 = 你确定要删除所有的截图吗？
     )"
     Lang1:=Map(), Lang1.Default:="", Lang2:=Map(), Lang2.Default:=""
     Loop Parse, s, "`n", "`r"
